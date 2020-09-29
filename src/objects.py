@@ -3,21 +3,23 @@ from sqlalchemy import Column, ForeignKey, Integer, String, column, TIMESTAMP, B
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
-Base = declarative_base()
+from src.connection import Base
 
 tweet_hashtag_association = Table('tweet_hashtag', Base.metadata,
-    Column('hashtag_id', Integer, ForeignKey('hashtags.id')),
-    Column('tweet_id', Integer, ForeignKey('tweets.id'))
-)
+                                  Column('hashtag_id', Integer, ForeignKey('hashtags.id')),
+                                  Column('tweet_id', String(20), ForeignKey('tweets.id'))
+                                  )
 
 tweet_mentions_association = Table('tweet_mentions', Base.metadata,
-    Column('account_id', Integer, ForeignKey('accounts.id')),
-    Column('tweet_id', Integer, ForeignKey('tweets.id'))
-)
+                                   Column('account_id', Integer, ForeignKey('accounts.id')),
+                                   Column('tweet_id', String(20), ForeignKey('tweets.id'))
+                                   )
+
 
 class Tweet(Base):
     __tablename__ = 'tweets'
-    id = Column(Integer, primary_key=True)
+
+    id = Column(String(20), primary_key=True)
     content = Column('content', String)
     location = Column('location', Geometry(geometry_type='POINT', srid=4326))
     retweet_count = Column('retweet_count', Integer)
@@ -29,7 +31,8 @@ class Tweet(Base):
     country = relationship("Country", back_populates="mobile_phone")
     author = relationship("Account")
     tweet = relationship("Tweet")
-    def __init__(self, content, location,retweet,favorite,happened_at,author,country,parent ):
+
+    def __init__(self, content, location, retweet, favorite, happened_at, author, country, parent):
         self.content = content
         self.location = location
         self.retweet_count = retweet
@@ -39,26 +42,34 @@ class Tweet(Base):
         self.country_id = country
         self.parent_id = parent
 
+
 class Country(Base):
     __tablename__ = 'countries'
+
     id = Column(Integer, primary_key=True)
     code = Column('code', String(2))
     name = Column('name', String(200))
     tweet = relationship("Tweet")
+
     def __init__(self, code, name):
         self.code = code
         self.name = name
 
+
 class Hashtag(Base):
     __tablename__ = 'hashtags'
+
     id = Column(Integer, primary_key=True)
     value = Column('value', String)
     tweets = relationship("Tweet", secondary=tweet_hashtag_association)
+
     def __init__(self, value):
         self.value = value
 
+
 class Account(Base):
     __tablename__ = 'accounts'
+
     id = Column(BigInteger, primary_key=True)
     screen_name = Column('screen_name', String(200))
     name = Column('name', String(200))
@@ -67,6 +78,7 @@ class Account(Base):
     friends_count = Column('friends_count', Integer)
     statuses_count = Column('statuses_count', Integer)
     tweets = relationship("Tweet", secondary=tweet_mentions_association)
+
     def __init__(self, screen_name, name, description, followers_count, friends_count, statuses_count):
         self.screen_name = screen_name
         self.name = name
