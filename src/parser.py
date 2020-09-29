@@ -1,11 +1,26 @@
 import gzip
 import json
-# from src.objects import *
+import os
+import sys
+import jsonlines
+from pathlib import Path
+from src.connection import engine, Base, Session
+from src.objects.account import Account
+from src.objects.country import Country
+from src.objects.hashtag import Hashtag
+from src.objects.tweet import Tweet
 
-with gzip.open('coronavirus-tweet-id-2020-08-01-06.jsonl.gz', 'r') as json_file:
-    json_list = list(json_file)
+# session = Session()
 
-for json_str in json_list:
-    result = json.loads(json_str.decode('utf-8'))
-    print("result: {}".format(result))
-    print(isinstance(result, dict))
+
+ROOT_DIR = sys.path[1]
+path = Path(os.path.join(ROOT_DIR, 'data'))
+temp_files = (file for file in path.iterdir() if file.name.endswith('jsonl'))
+
+for file in temp_files:
+    with jsonlines.open(file) as f:
+        for item in f:
+            print(item)
+            tweet = Tweet
+# # session.commit()
+# # session.close()

@@ -1,18 +1,16 @@
-from datetime import date
 from src.connection import engine, Base,Session
-from src.objects.country import Country
-from src.objects.tweet import Tweet
 from src.objects.account import Account
+from src.objects.country import Country
 from src.objects.hashtag import Hashtag
+from src.objects.tweet import Tweet
 
-# Base.metadata.create_all(engine)
 
 session = Session()
 
-Hashtag = Hashtag("Fero")
+hashtag = Hashtag('fero')
 
 
-session.add(Hashtag)
+session.add(hashtag)
 
 session.commit()
 session.close()
