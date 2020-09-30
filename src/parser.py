@@ -20,7 +20,8 @@ temp_files = (file for file in path.iterdir() if file.name.endswith('jsonl'))
 for file in temp_files:
     with jsonlines.open(file) as f:
         for item in f:
-            print(item)
-            tweet = Tweet
+            # print(item)
+            # tweet = Tweet
+            print(item['created_at'])
 # # session.commit()
 # # session.close()
