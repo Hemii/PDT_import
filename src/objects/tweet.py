@@ -1,7 +1,17 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, TIMESTAMP, BigInteger
+from sqlalchemy import Column, ForeignKey, Integer, String, TIMESTAMP, BigInteger, Table
 from sqlalchemy.orm import relationship
 from src.connection import Base
 from geoalchemy2 import Geometry
+
+tweet_hashtag_association = Table('tweet_hashtag', Base.metadata,
+                                  Column('hashtag_id', Integer, ForeignKey('hashtags.id')),
+                                  Column('tweet_id', String(20), ForeignKey('tweets.id'))
+                                  )
+
+tweet_mentions_association = Table('tweet_mentions', Base.metadata,
+                                   Column('account_id', Integer, ForeignKey('accounts.id')),
+                                   Column('tweet_id', String(20), ForeignKey('tweets.id'))
+                                   )
 
 class Tweet(Base):
     __tablename__ = 'tweets'
@@ -18,13 +28,21 @@ class Tweet(Base):
     country = relationship("Country")
     author = relationship("Account")
     tweet = relationship("Tweet")
+    hashtags = relationship("Hashtag", secondary=tweet_hashtag_association)
+    mentions = relationship("Account", secondary=tweet_mentions_association)
 
-    def __init__(self, content, location, retweet, favorite, happened_at, author, country, parent):
+    def __init__(self,id, content, location, retweet, favorite, happened_at, author_id, country_id, parent, hashtags ,mentions, country, author, tweet):
+        self.id = id
         self.content = content
         self.location = location
         self.retweet_count = retweet
         self.favorite_count = favorite
         self.happened_at = happened_at
-        self.author_id = author
-        self.country_id = country
+        self.author_id = author_id
+        self.country_id = country_id
         self.parent_id = parent
+        self.hashtags = hashtags
+        self.mentions = mentions
+        self.country = country
+        self.author = author
+        self.tweet = tweet
