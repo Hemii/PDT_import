@@ -31,18 +31,16 @@ class Tweet(Base):
     hashtags = relationship("Hashtag", secondary=tweet_hashtag_association)
     mentions = relationship("Account", secondary=tweet_mentions_association)
 
-    def __init__(self,id, content, location, retweet, favorite, happened_at, author_id, country_id, parent, hashtags ,mentions, country, author, tweet):
+    def __init__(self,id, content, location, retweet, favorite, happened_at):
         self.id = id
         self.content = content
         self.location = location
         self.retweet_count = retweet
         self.favorite_count = favorite
         self.happened_at = happened_at
-        self.author_id = author_id
-        self.country_id = country_id
-        self.parent_id = parent
-        self.hashtags = hashtags
-        self.mentions = mentions
-        self.country = country
-        self.author = author
-        self.tweet = tweet
+
+
+
+
+
+

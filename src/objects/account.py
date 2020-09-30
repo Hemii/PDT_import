@@ -36,3 +36,18 @@ class Account(Base):
     #     self.friends_count = friends_count
     #     self.statuses_count = statuses_count
     #     self.tweet = tweet
+
+    def update(self, object):
+        Attributes = [attribute for attribute in dir(newPackage) if not attribute.startswith('_')]
+        for key in newPackageAttributes:
+            try:
+                if getattr(self, key) != getattr(newPackage, key) \
+                        and key != 'id' \
+                        and key != 'name':
+                    if type(getattr(newPackage, key)) == str:
+                        setattr(self, key, getattr(newPackage, key))
+            except AttributeError:
+                app.logger.debug("attribute not found, no pb")
+        self.lastUpdate = datetime.utcnow()
+
+
