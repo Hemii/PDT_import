@@ -26,8 +26,3 @@ class Account(Base):
         self.friends_count = friends_count
         self.statuses_count = statuses_count
 
-    def __str__(self):
-        return f"id: {self.id}\nscreen_name: {self.screen_name}\nname: {self.name}\ndescription: {self.description}\nfollowers_count: {self.followers_count}\nfriends_count: {self.friends_count}\nstatuses_count: {self.statuses_count}\n"
-
-    def __repr__(self):
-        return str(self)

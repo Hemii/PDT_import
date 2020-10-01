@@ -24,14 +24,6 @@ ROOT_DIR = sys.path[1]
 path = Path(os.path.join(ROOT_DIR, 'data'))
 temp_files = (file for file in path.iterdir() if file.name.endswith('jsonl'))
 
-hashmap_accounts = {}
-hashmap_hashtags = {}
-hashmap_countries = {}
-hashmap_tweets = {}
-
-ROOT_DIR = sys.path[1]
-path = Path(os.path.join(ROOT_DIR, 'test'))
-
 session = Session()
 hashmap_accounts = {}
 hashmap_hashtags = {}
@@ -136,17 +128,11 @@ def pars_tweet(tweet):
             for mentioned_user in tweet['entities']['user_mentions']:
 
                 mentioned_user_id = mentioned_user['id']
-
-
                 if (mentioned_user_id in array_mentions_ids or mentioned_user_id == created_tweet.author.id):
                     continue
 
                 if not mentioned_user_id in hashmap_accounts:
-                    account = Account(
-                       mentioned_user['id'],
-                       mentioned_user['screen_name'],
-                       mentioned_user['name'],
-                    )
+                    account = Account( mentioned_user['id'], mentioned_user['screen_name'], mentioned_user['name'])
                     hashmap_accounts[mentioned_user_id] = 0
                     array_mentions_ids.append(mentioned_user_id)
                 else:
@@ -156,28 +142,6 @@ def pars_tweet(tweet):
 
             created_tweet.mentions = array_mentions
 
-        # if tweet['entities'] is not None and tweet['entities']['user_mentions'] is not None:
-        #     array_mentions = []
-        #     array_mentions_ids = []
-        #     for mention_user in tweet['entities']['user_mentions']:
-        #         mention_user_id = mention_user['id']
-        #
-        #
-        #         if mention_user_id == tweet['user']['id'] or mention_user_id in array_mentions_ids:
-        #             continue
-        #
-        #         # print(hashmap_accounts[mention_user_id])
-        #
-        #         if not mention_user_id in hashmap_accounts :
-        #             account = Account(user_id, mention_user['screen_name'], mention_user['name'])
-        #             hashmap_accounts[mention_user_id] = 0
-        #             array_mentions_ids.append(account.id)
-        #         else:
-        #             account = session.query(Account).filter(Account.id == mention_user_id).scalar()
-        #         array_mentions.append(account)
-        #
-        #     print(array_mentions)
-        #     created_tweet.mentions = array_mentions
 
         created_tweet.tweet = tweet_parent
         session.add(created_tweet)
