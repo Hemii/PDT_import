@@ -9,7 +9,7 @@ tweet_hashtag_association = Table('tweet_hashtag', Base.metadata,
                                   )
 
 tweet_mentions_association = Table('tweet_mentions', Base.metadata,
-                                   Column('account_id', Integer, ForeignKey('accounts.id')),
+                                   Column('account_id', BigInteger, ForeignKey('accounts.id')),
                                    Column('tweet_id', String(20), ForeignKey('tweets.id'))
                                    )
 
@@ -25,9 +25,10 @@ class Tweet(Base):
     author_id = Column(BigInteger, ForeignKey('accounts.id'))
     country_id = Column(Integer, ForeignKey('countries.id'))
     parent_id = Column(String(20), ForeignKey('tweets.id'))
-    country = relationship("Country")
+
     author = relationship("Account")
-    tweet = relationship("Tweet")
+    country = relationship("Country")
+    tweet = relationship("Tweet", remote_side=[id])
     hashtags = relationship("Hashtag", secondary=tweet_hashtag_association)
     mentions = relationship("Account", secondary=tweet_mentions_association)
 

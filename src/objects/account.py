@@ -4,8 +4,6 @@ from src.connection import Base
 from src.objects.tweet import tweet_mentions_association
 
 
-
-
 class Account(Base):
     __tablename__ = 'accounts'
 
@@ -18,7 +16,8 @@ class Account(Base):
     statuses_count = Column('statuses_count', Integer)
     tweet = relationship("Tweet", secondary=tweet_mentions_association)
 
-    def __init__(self, id, screen_name, name, description, followers_count, friends_count, statuses_count):
+    def __init__(self, id, screen_name, name, description=None, followers_count=None, friends_count=None,
+                 statuses_count=None):
         self.id = id
         self.screen_name = screen_name
         self.name = name
@@ -27,27 +26,8 @@ class Account(Base):
         self.friends_count = friends_count
         self.statuses_count = statuses_count
 
-    # def __init__(self, id, screen_name, name, description, followers_count, friends_count, statuses_count, tweet):
-    #     self.id = id
-    #     self.screen_name = screen_name
-    #     self.name = name
-    #     self.description = description
-    #     self.followers_count = followers_count
-    #     self.friends_count = friends_count
-    #     self.statuses_count = statuses_count
-    #     self.tweet = tweet
+    def __str__(self):
+        return f"id: {self.id}\nscreen_name: {self.screen_name}\nname: {self.name}\ndescription: {self.description}\nfollowers_count: {self.followers_count}\nfriends_count: {self.friends_count}\nstatuses_count: {self.statuses_count}\n"
 
-    def update(self, object):
-        Attributes = [attribute for attribute in dir(newPackage) if not attribute.startswith('_')]
-        for key in newPackageAttributes:
-            try:
-                if getattr(self, key) != getattr(newPackage, key) \
-                        and key != 'id' \
-                        and key != 'name':
-                    if type(getattr(newPackage, key)) == str:
-                        setattr(self, key, getattr(newPackage, key))
-            except AttributeError:
-                app.logger.debug("attribute not found, no pb")
-        self.lastUpdate = datetime.utcnow()
-
-
+    def __repr__(self):
+        return str(self)

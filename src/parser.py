@@ -6,6 +6,8 @@ import os
 import sys
 import jsonlines
 from pathlib import Path
+
+from geoalchemy2 import WKTElement
 from sqlalchemy import exists, func
 from sqlalchemy.testing import db
 from src.connection import engine, Base, Session
@@ -15,155 +17,175 @@ from src.objects.hashtag import Hashtag
 from src.objects.tweet import Tweet
 
 
-def parser_acc(line):
-    account_id = line['user']['id']
-    screen_name = line['user']['screen_name']
-    name = line['user']['name']
-    description = line['user']['description']
-    followers_count = line['user']['followers_count']
-    friends_count = line['user']['friends_count']
-    statuses_count = line['user']['statuses_count']
-    return Account(account_id, screen_name, name, description, followers_count, friends_count, statuses_count)
 
 
-def parser_country(line):
-    if line['place'] is not None:
-        code = line['place']['country_code']
-        name = line['place']['country']
-        return Country(code, name)
-
-
-def parser_tweet(line):
-    id_str = line['id_str']
-    content = line['full_text']
-
-    location = None
-    if line['coordinates'] is not None:
-        location = func.ST_SetSRID(
-            geoalchemy2.types.Geometry.ST_MakePoint(line['coordinates']['coordinates'][0], line['coordinates']['coordinates'][1]), 4326)
-
-    retweet = line['retweet_count']
-    favorite = line['favorite_count']
-
-    happend_at = None
-    if line['created_at'] is not None:
-        happend_at = datetime.strptime(line['created_at'], '%a %b %d %X %z %Y')
-        # print(happend_at)
-    else:
-        happend_at = None
-    parent = None
-    if line['retweeted']:
-        parent = line['retweeted_status']['id']
-    tweet_temp = Tweet
-    return
 
 ROOT_DIR = sys.path[1]
 path = Path(os.path.join(ROOT_DIR, 'data'))
 temp_files = (file for file in path.iterdir() if file.name.endswith('jsonl'))
 
-list_of_accounts = {}
-list_of_hashtags = {}
-list_of_countries = {}
-list_of_tweets = {}
+hashmap_accounts = {}
+hashmap_hashtags = {}
+hashmap_countries = {}
+hashmap_tweets = {}
 
-for file, iterator in zip(temp_files, range(0, 4)):
-    iterator = iterator + 1
+ROOT_DIR = sys.path[1]
+path = Path(os.path.join(ROOT_DIR, 'test'))
+
+session = Session()
+hashmap_accounts = {}
+hashmap_hashtags = {}
+hashmap_countries = {}
+hashmap_tweets = {}
+
+
+def file_parser():
+    files_for_parsing = (f for f in path.iterdir() if f.name.endswith('jsonl'))
     count = 0
-    session = Session()
-    print(file)
+    for file in files_for_parsing:
+        with jsonlines.open(file) as f:
+            for tweet in f:
+                count = count + 1
+                print(count)
+                pars_tweet(tweet)
+            session.commit()
 
-    with jsonlines.open(file) as f:
+def pars_tweet(tweet):
+    tweet_id = tweet['id_str']
 
-        for line in f:
-            count = count + 1
-            print(count)
+    if not tweet_id in hashmap_tweets:
 
-            # Vytvorenie objektu Account
-            user = parser_acc(line)
-            list_of_accounts[user.id] = user
+        tweet_parent = None
+        if 'retweeted_status' in tweet and tweet['retweeted_status'] is not None :
 
-            # Vytvorenie objektu Hashtag
-            hashtags = []
-            hashtags = line['entities']['hashtags']
-            for i in hashtags:
-                temp_hash = Hashtag(i['text'])
-                list_of_hashtags[temp_hash.value] = temp_hash
+            tweet_parent = pars_tweet(tweet['retweeted_status'])
 
-            # Vytvorenie objektu Country
-            country_temp = parser_country(line)
-            list_of_countries[country_temp.code] = country_temp
+        tweet_location = None
+        if tweet['coordinates'] is not None:
+            tweet_location = WKTElement(
+                f"POINT({tweet['coordinates']['coordinates'][0]} {tweet['coordinates']['coordinates'][1]})", srid=4326)
 
-            # Vytvorenie objektu Tweet
-            tweet_temp = parser_tweet(line)
-            list_of_tweets[tweet_temp.id] = tweet_temp
+        created_tweet = Tweet(
+            tweet_id,
+            tweet['full_text'],
+            tweet_location,
+            tweet['retweet_count'],
+            tweet['favorite_count'],
+            tweet['created_at']
+        )
+
+        hashmap_tweets[created_tweet.id] = True
+
+        if tweet['user'] is not None:
+            mentioned_user_id = tweet['user']['id']
+            if not mentioned_user_id in hashmap_accounts:
+                account = Account(mentioned_user_id, tweet['user']['screen_name'], tweet['user']['name'],
+                                  tweet['user']['description'], tweet['user']['followers_count'],
+                                  tweet['user']['friends_count'], tweet['user']['statuses_count'])
+                hashmap_accounts[mentioned_user_id] = 1
+
+            else:
+                account = session.query(Account).filter(Account.id == mentioned_user_id).scalar()
+
+                if hashmap_accounts[mentioned_user_id] == 0:
+                    hashmap_accounts[mentioned_user_id] = 1
+                    account.description = tweet['user']['description']
+                    account.followers_count = tweet['user']['followers_count']
+                    account.friends_count = tweet['user']['friends_count']
+                    account.statuses_count = tweet['user']['statuses_count']
+
+            created_tweet.author = account
+
+        if tweet['place'] is not None:
+            place_code = tweet['place']['country_code']
+            if not place_code in hashmap_countries:
+                country = Country(place_code, tweet['place']['country'])
+                hashmap_countries[place_code] = True
+
+            else:
+                country = session.query(Country).filter(Country.code == place_code).scalar()
+
+            created_tweet.country = country
+
+        if tweet['entities'] is not None and tweet['entities']['hashtags'] is not None:
+            array_hashtags = []
+            array_hashtags_ids = []
+            for hashtag in tweet['entities']['hashtags']:
+
+                hashtag_text = hashtag['text']
+
+                if  hashtag_text in array_hashtags_ids:
+                    continue
+
+                if not hashtag_text in hashmap_hashtags:
+                    hashmap_hashtags[hashtag_text] = True
+                    created_hashtag = Hashtag(hashtag_text)
+                    array_hashtags_ids.append(created_hashtag.value)
+                else:
+                    created_hashtag = session.query(Hashtag).filter(Hashtag.value == hashtag_text).scalar()
+
+                array_hashtags.append(created_hashtag)
+
+            created_tweet.hashtags = array_hashtags
+
+        if tweet['entities'] is not None and tweet['entities']['user_mentions'] is not None:
+
+            array_mentions = []
+            array_mentions_ids = []
+
+            for mentioned_user in tweet['entities']['user_mentions']:
+
+                mentioned_user_id = mentioned_user['id']
 
 
+                if (mentioned_user_id in array_mentions_ids or mentioned_user_id == created_tweet.author.id):
+                    continue
 
+                if not mentioned_user_id in hashmap_accounts:
+                    account = Account(
+                       mentioned_user['id'],
+                       mentioned_user['screen_name'],
+                       mentioned_user['name'],
+                    )
+                    hashmap_accounts[mentioned_user_id] = 0
+                    array_mentions_ids.append(mentioned_user_id)
+                else:
+                    account = session.query(Account).filter(Account.id == mentioned_user_id).scalar()
 
-        # session.bulk_save_objects(list(list_of_accounts.values()))
-        # session.bulk_save_objects(list(list_of_hashtags.values()))
-        # session.bulk_save_objects(list(list_of_countries.values()))
+                array_mentions.append(account)
 
-        print("account", sys.getsizeof(list(list_of_accounts.values())))
-        print("account", sys.getsizeof(list(list_of_hashtags.values())))
-        print("account", sys.getsizeof(list(list_of_countries.values())))
+            created_tweet.mentions = array_mentions
 
+        # if tweet['entities'] is not None and tweet['entities']['user_mentions'] is not None:
+        #     array_mentions = []
+        #     array_mentions_ids = []
+        #     for mention_user in tweet['entities']['user_mentions']:
+        #         mention_user_id = mention_user['id']
         #
         #
+        #         if mention_user_id == tweet['user']['id'] or mention_user_id in array_mentions_ids:
+        #             continue
         #
-        # session = Session()
-
-        # if session.query(exists().where(Account.id == user.id)).scalar():
-        #     temp_account = Account.query.filter_by(id=Account.id).first()
-        #     if
-        # else:
-        #     session.add(user)
-
+        #         # print(hashmap_accounts[mention_user_id])
         #
-        # if not session.query(exists().where(Account.id == user.id)).scalar():
-        #     session.add(user)
-        # else:
-        #     session.query(Account).filter(Account.id == user.id).update({Account.name: user.name })
-        #     print("rovnaky user")
+        #         if not mention_user_id in hashmap_accounts :
+        #             account = Account(user_id, mention_user['screen_name'], mention_user['name'])
+        #             hashmap_accounts[mention_user_id] = 0
+        #             array_mentions_ids.append(account.id)
+        #         else:
+        #             account = session.query(Account).filter(Account.id == mention_user_id).scalar()
+        #         array_mentions.append(account)
         #
-        # for i in hashtags:
-        #     temp_hash = Hashtag(i['text'])
-        #     if not session.query(exists().where(Hashtag.value == temp_hash.value)).scalar():
-        #         session.add(temp_hash)
-        #
-        # if country_temp is not None:
-        #     if not session.query(exists().where(Country.code == country_temp.code and Country.name == country_temp.name)).scalar():
-        #         session.add(country_temp)
+        #     print(array_mentions)
+        #     created_tweet.mentions = array_mentions
 
-        # if not session.query(exists().where(Tweet.id == Tweet.id)).scalar():
-        #     obj_tweet = Tweet(id_str,
-        #                       content,
-        #                       location,
-        #                       retweet,
-        #                       favorite,
-        #                       happend_at,
-        #                       user.id,
-        #                       None,
-        #                       parent,
-        #                       None,
-        #                       None,
-        #                       None,
-        #                       user,
-        #                       None)
-        #     session.add(user)
+        created_tweet.tweet = tweet_parent
+        session.add(created_tweet)
+        return created_tweet
 
-        session.commit()
+
+
+
+file_parser()
+
 session.close()
-# session = Session()
-# country = Country('US','United')
-# session.add(country)
-# country = Country('SK','Slovakia')
-# session.add(country)
-# #
-# # if not session.query(exists().where(Country.code == country.code)).scalar():
-# #     session.add(country)
-# # else:
-# #     session.query(Country).filter(Country.code == country.code).update({Country.name: country.name, Country.code: 'BL'})
-# #
-# session.commit()
-# session.close()
